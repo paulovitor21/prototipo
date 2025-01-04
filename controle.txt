@@ -1,0 +1,7 @@
+1 - Implementar rolagem vertical - ok
+2 - Implementar destaque do botao selecionado
+3 - Implementar caixa de pesquisa
+4 - Implementar tela de log
+5 - Implementar status de atualização - ok
+6 - Estilizar botões (colocar ícones)
+7 - Implementa numeração de contagem - ok
