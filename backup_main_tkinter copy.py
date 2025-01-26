@@ -3,7 +3,6 @@ import customtkinter as ctk
 from tkinter import ttk
 from datetime import datetime
 from tkinter import messagebox
-import pandas as pd  # Para manipulação de arquivos Excel
 
 
 class App(ctk.CTk):
@@ -51,7 +50,7 @@ class App(ctk.CTk):
         for col in columns_to_filter:
             label = ctk.CTkLabel(self.filter_frame, text=col)
             label.pack(side="left", padx=5)
-
+            
             combobox = ttk.Combobox(self.filter_frame, state="readonly")
             combobox.pack(side="left", padx=5)
             combobox.bind("<<ComboboxSelected>>", self.filter_data)  # Vincula o evento de seleção
@@ -85,10 +84,12 @@ class App(ctk.CTk):
         self.last_update_label = ctk.CTkLabel(self, text="Última atualização: Nenhuma", font=("Arial", 12), anchor="w")
         self.last_update_label.pack(side="bottom", fill="x", padx=10, pady=5)
 
-        # Atualizar filtros quando a tabela for carregada
+         # Atualizar filtros quando a tabela for carregada
         self.update_filters(self.all_data)
 
+    
     def update_filters(self, data):
+        # Atualizar valores disponíveis nos filtros
         if not data:
             return
 
@@ -101,6 +102,7 @@ class App(ctk.CTk):
                 combobox.set("Todos")  # Define o valor padrão como "Todos"
 
     def filter_data(self, event=None):
+        # Filtrar dados com base nos critérios de filtragem
         headers, *rows = self.all_data
         filtered_rows = rows
 
@@ -109,65 +111,83 @@ class App(ctk.CTk):
                 col_index = headers.index(col)
                 filtered_rows = [row for row in filtered_rows if row[col_index] == combobox.get()]
 
+        # Atualizar tabela com os dados filtrados
         self.current_page = 0
         self.display_table([headers] + filtered_rows)
 
     def display_table(self, data):
+        # Limpar a tabela atual
         for widget in self.table_frame.winfo_children():
             widget.destroy()
 
+        # Frame para Treeview e barras de rolagem
         container = ctk.CTkFrame(self.table_frame)
         container.pack(fill="both", expand=True)
 
+        # Criar Treeview
         self.treeview = ttk.Treeview(container, columns=data[0], show="headings")
 
+        # Configurar cabeçalhos
         for col in data[0]:
             self.treeview.heading(col, text=col)
             self.treeview.column(col, width=150)
 
+        # Configurar estilo
         style = ttk.Style()
         style.theme_use("default")
         style.configure("Treeview", rowheight=25, font=("Arial", 12))
         style.map("Treeview", background=[("selected", "#347083")], foreground=[("selected", "white")])
         style.configure("Treeview.Heading", font=("Arial", 14, "bold"))
 
+        # Tags de estilo
         self.treeview.tag_configure("evenrow", background="#f2f2f2")
         self.treeview.tag_configure("oddrow", background="white")
 
+        # Paginação: calcular os índices
         start_index = self.current_page * self.rows_per_page
         end_index = start_index + self.rows_per_page
         page_data = data[1:][start_index:end_index]
 
+        # Inserir dados
         for i, row in enumerate(page_data):
             tag = "evenrow" if i % 2 == 0 else "oddrow"
             self.treeview.insert("", "end", values=row, tags=(tag,))
 
+        # Adicionar barras de rolagem
         v_scroll = ttk.Scrollbar(container, orient="vertical", command=self.treeview.yview)
         h_scroll = ttk.Scrollbar(container, orient="horizontal", command=self.treeview.xview)
         self.treeview.configure(yscrollcommand=v_scroll.set, xscrollcommand=h_scroll.set)
 
+        # Posicionar widgets
         self.treeview.grid(row=0, column=0, sticky="nsew")
         v_scroll.grid(row=0, column=1, sticky="ns")
         h_scroll.grid(row=1, column=0, sticky="ew")
 
+        # Configurar expansão
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
+        # Atualizar paginação
         self.update_pagination_controls(len(data) - 1)
 
     def update_pagination_controls(self, total_rows):
+        # Limpar controles anteriores
         for widget in self.pagination_frame.winfo_children():
             widget.destroy()
 
+        # Calcular total de páginas
         total_pages = (total_rows + self.rows_per_page - 1) // self.rows_per_page
 
+        # Botão Anterior
         if self.current_page > 0:
             prev_button = ctk.CTkButton(self.pagination_frame, text="Anterior", command=self.previous_page)
             prev_button.pack(side="left", padx=10)
 
+        # Informação da Página
         page_info = ctk.CTkLabel(self.pagination_frame, text=f"Página {self.current_page + 1} de {total_pages}")
         page_info.pack(side="left", padx=10)
 
+        # Botão Próximo
         if self.current_page < total_pages - 1:
             next_button = ctk.CTkButton(self.pagination_frame, text="Próximo", command=self.next_page)
             next_button.pack(side="left", padx=10)
@@ -184,12 +204,14 @@ class App(ctk.CTk):
         search_query = self.search_entry.get().lower()
         if not search_query:
             self.current_page = 0
-            self.display_table(self.all_data)
+            self.display_table(self.all_data)  # Mostrar todos os dados se o campo de busca estiver vazio
             return
 
+        # Filtrar dados
         headers, *rows = self.all_data
         filtered_data = [row for row in rows if any(search_query in str(cell).lower() for cell in row)]
 
+        # Atualizar exibição
         if filtered_data:
             self.current_page = 0
             self.display_table([headers] + filtered_data)
@@ -197,77 +219,103 @@ class App(ctk.CTk):
             ctk.CTkMessagebox.show_info("Busca", "Nenhum dado encontrado para o termo informado.")
 
     def show_table_from_db(self):
+        # Configurações do banco de dados PostgreSQL
         db_config = {
-            "dbname": "db_mrp",
-            "user": "postgres",
-            "password": "@manaus",
-            "host": "localhost",
+            "dbname": "db_mrp",  # Substitua pelo nome do seu banco
+            "user": "postgres",  # Substitua pelo seu usuário
+            "password": "@manaus",  # Substitua pela sua senha
+            "host": "localhost",  # Substitua se for um host remoto
         }
 
         try:
+            # Conexão com o banco de dados
             connection = psycopg2.connect(**db_config)
             cursor = connection.cursor()
 
-            query = "SELECT file_date, org, child_item, child_desc, child_uit, qpa, local, assy, planner, purchaser, supplier, supplier_name, model_mrp, infor, date, quantity FROM table_bom"
+            # Execute uma consulta SQL
+            query = "SELECT file_date, org, child_item, child_desc, child_uit, qpa, local, assy, planner, purchaser, supplier, supplier_name, model_mrp, infor, date, quantity FROM table_bom"  # Ajuste conforme sua tabela e colunas
             cursor.execute(query)
             rows = cursor.fetchall()
 
-            data = [["DATA DO ARQUIVO", "ORG", "CHILD ITEM", "CHILD DESC", "CHILD UIT", "QPA", "LOCAL", "ASSY", "PLANNER", "PURCHASER", "SUPPLIER", "SUPPLIER NAME", "MODEL MRP", "INFOR", "DATE", "QUANTITY"]]
+            # Formate os dados para exibição
+            data = [["DATA DO ARQUIVO", "ORG", "CHILD ITEM", "CHILD DESC", "CHILD UIT", "QPA", "LOCAL", "ASSY", "PLANNER", "PURCHASER", "SUPPLIER", "SUPPLIER NAME", "MODEL MRP", "INFOR", "DATE", "QUANTITY"]]  # Cabeçalhos
             data.extend(rows)
 
-            self.all_data = data
+            self.all_data = data  # Salvar todos os dados
             self.current_page = 0
             self.display_table(data)
 
+            # buscar a data mais recente
             cursor.execute("SELECT MAX(file_date) FROM table_bom")
             ultima_data_arquivo = cursor.fetchone()[0]
 
+            # Atualizar a data/hora da última atualização
             current_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
             data_arquivo_texto = ultima_data_arquivo.strftime("%d/%m/%Y") if ultima_data_arquivo else "Desconhecida"
             self.last_update_label.configure(
                 text=f"Última atualização: {current_time} | Data mais recente: {data_arquivo_texto}"
             )
-
-            if not hasattr(self, "export_button"):
-                self.export_button = ctk.CTkButton(
-                    self,
-                    text="Exportar para Excel",
-                    command=self.export_to_excel
-                )
-                self.export_button.place(relx=0.95, rely=0.95, anchor="se")
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao acessar o banco de dados: {e}")
         finally:
             if 'connection' in locals():
                 connection.close()
 
-    def export_to_excel(self):
-        if len(self.all_data) <= 1:
-            messagebox.showerror("Erro", "Nenhum dado disponível para exportação.")
-            return
-
-        headers = self.all_data[0]
-        rows = self.all_data[1:]
-        df = pd.DataFrame(rows, columns=headers)
-
-        save_path = "dados_exportados.xlsx"
-        try:
-            df.to_excel(save_path, index=False)
-            messagebox.showinfo("Sucesso", f"Dados exportados com sucesso para {save_path}!")
-        except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao exportar dados: {e}")
-
     def show_table_plan_assy(self):
-        # Implementar funcionalidade para exibir a tabela Plan Assy
-        pass
+        # Configurações do banco de dados PostgreSQL
+        db_config = {
+            "dbname": "db_mrp",  # Substitua pelo nome do seu banco
+            "user": "postgres",  # Substitua pelo seu usuário
+            "password": "@manaus",  # Substitua pela sua senha
+            "host": "localhost",  # Substitua se for um host remoto
+        }
+
+        try:
+            # Conexão com o banco de dados
+            connection = psycopg2.connect(**db_config)
+            cursor = connection.cursor()
+
+            # Execute uma consulta SQL
+            #query = "SELECT TO_CHAR(file_date, 'DD-MM-YYYY'), org, model_suffix, date, quantity FROM table_nfp_t"  # Ajuste 
+            query_create_view = """
+                SELECT * FROM view_nfp_t;
+                """
+            #conforme sua tabela e colunas
+            cursor.execute(query_create_view)
+            rows = cursor.fetchall()
+
+            # Formate os dados para exibição
+            data = [["DATA DO PLANO", "ORG", "MODEL SUFFIX", "DATA", "QUANTIDADE"]]  # Cabeçalhos
+            data.extend(rows)
+
+            self.all_data = data  # Salvar todos os dados
+            self.current_page = 0
+            self.display_table(data)
+
+            # buscar a data mais recente
+            cursor.execute("SELECT MAX(file_date) FROM table_nfp_t")
+            ultima_data_arquivo = cursor.fetchone()[0]
+
+            # Atualizar a data/hora da última atualização
+            current_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            data_arquivo_texto = ultima_data_arquivo.strftime("%d/%m/%Y") if ultima_data_arquivo else "Desconhecida"
+            self.last_update_label.configure(
+                text=f"Última atualização: {current_time} | Data mais recente: {data_arquivo_texto}"
+            )
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao acessar o banco de dados: {e}")
+        finally:
+            if 'connection' in locals():
+                connection.close()
+
 
     def update_database(self):
-        # Implementar funcionalidade para atualizar o banco de dados
-        pass
+        # Função de atualização simulada
+        messagebox.showinfo("Atualizar Dados", "Dados atualizados com sucesso!")
 
     def support_action(self):
-        # Implementar funcionalidade para suporte
-        pass
+        # Função de suporte simulada
+        messagebox.showinfo("Suporte", "Ação de suporte ainda não implementada!")
 
 
 if __name__ == "__main__":
